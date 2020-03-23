@@ -1,9 +1,7 @@
 
 section .bss
 STD_OUT equ 1
-EXIT 	equ 1 
 WRITE 	equ 4
-ERR_NO 	equ 0
 
 
 section .text
@@ -12,14 +10,57 @@ section .text
 
 	
 section .data
-
-	
 	buffer_ptr: dq $
-	printf_buffer: times 64d db 0 
+	printf_buffer: times 128d db 0 
 
 section .text 
 	
-_printf:	
+;╔════════════════════════════════════════════════════════════════════════╗
+;║		This macros makes function _printf more convenient to use.        ║
+;║	                                                                      ║
+;║    	This macros expects the word 'printf', then the pointer to the    ║
+;║	format line, and then arguments of the function in the order like     ║
+;║	in the format line.                                                   ║
+;║                                                                        ║
+;║	Some features:                                                        ║
+;║		%0 - number of arguments that macros received                     ║
+;║		%rep (n)- repeats the commands before %endrep (n) times           ║
+;║		%rotate - moves numbers of the received elements: %1 ⇒ %2 etc.    ║
+;║                                                                        ║
+;║		All arguments are pushed in the stack with size 8. RSP-register   ║
+;║	is moved backwards, so the pushed registers become trash.             ║
+;║                                                                        ║
+;╚════════════════════════════════════════════════════════════════════════╝
+%macro printf 1-*
+	%rep %0
+		%rotate -1
+		push %1
+	%endrep
+	call _printf
+	add rsp, 8 * %0
+%endmacro
+
+;╔═══════════════════════════════════_PRINTF══════════════════════════════════════════╗
+;║																					  ║
+;║		This function is the equivalent of the function "printf" in the standart      ║
+;║	C library <stdio.h>. This function uses a special format string, which consists   ║
+;║	of quotes, some text and format symbols inside, terminating symbol '\0'.          ║
+;║	Arguments arg_1, ..., arg_n are not neccessary, they are inserted instead of      ║
+;║	format symbols.                                                                   ║
+;║		                                                                              ║
+;║		WARNING! The number of these arguments and format symbols MUST be the same.   ║
+;║	Otherwise the stack can be damaged.                                               ║
+;║                                                                                    ║
+;║		ARGUMENTS:                                                                    ║
+;║						pointer to the format string                                  ║
+;║						arg_1                                                         ║
+;║						...                                                           ║
+;║						arg_n                                                         ║
+;║		RETURN:			The number of the arguments really written.                   ║
+;║                                                                                    ║
+;╚════════════════════════════════════════════════════════════════════════════════════╝
+
+_printf:
 
 	push rbp
 	push rsi
@@ -80,7 +121,6 @@ ret
 _found_format:
 	
 	inc rsi
-	inc rdi
 	mov al, [rsi]
 
 	cmp al, 'c'
@@ -183,6 +223,7 @@ _found_format:
 
 	.printf_percent:
 	call _Printf_Percent
+	dec r11
 	jmp .End
 
 .End:
@@ -249,6 +290,8 @@ _Printf_Digit:
 
 .End:
 ret
+
+
 
 _Printf_Bin:
 

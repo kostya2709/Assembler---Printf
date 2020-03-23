@@ -8,11 +8,11 @@ LFLAGS= -s -o
 all: clean $(FNAME)
 
 $(FNAME): $(FNAME).o
-	@ld $(LFLAGS) $(FNAME) $(TEST).o $(FNAME).o
+	@ld $(LFLAGS) $(FNAME) $(TEST).o
 	@./$(FNAME)
 
 $(FNAME).o:
-	@nasm $(CFLAGS) $(FNAME).asm
+#	@nasm $(CFLAGS) $(FNAME).asm
 	@nasm $(CFLAGS) $(TEST).asm
 
 clean:
