@@ -21,12 +21,13 @@ section .text
 global _start
 
 _start:
-	;call _unitest_c
+
+	call _unitest_c
 	call _unitest_sl
-	;call _unitest_d
-	;call _unitest_l
-	;call _unitest_bin
-	;call _big_text
+	call _unitest_d
+	call _unitest_l
+	call _unitest_bin
+	call _big_text
 
 .End:
 
@@ -42,11 +43,18 @@ section .data
 	db "\n\n\n-------------UNITEST FOR '%%c'-------------\n\n", 0
 	format_test_c: 
 	db "%c c%cn insert%csymbols%c\vAnd do not forget about %%\n", 0
+
+	format_example:
+	db "I %s %x %d%%%c%b",0xa, 0
+
+	love:
+	db "love", 0
 _unitest_c:
 
 	printf format_c
 	printf format_test_c, 'I', 'a', ' ', '!'
 	printf printf_test_args, rax
+	printf format_example, love, 3802, 100, '!', 127
 
 ret
 
@@ -64,8 +72,6 @@ section .data
 	db "'\\v': I can make vertical tabulation: '\v'\n", 0
 	format_slash0:
 	db "'\\0': I can break the sentence right in the mi\0ddle!", 0
-	format_slashb:
-	db "\n'\\b': I can delete a previous letter\b", 0
 	var:
 	db 0
 _unitest_sl:
@@ -75,7 +81,6 @@ _unitest_sl:
 	printf format_slashn
 	printf format_slashv
 	printf format_slash0
-	printf format_slashb
 	printf division
 ret
 
@@ -175,7 +180,7 @@ section .data
 	format_bin1: 
 	db "2:\t%b\n4:\t%q\n8:\t%o\n16:\t%x\n16_p:\t%p\n32:\t%f\n64:\t%i\n\n\n", 0
 	format_bin2: 
-	db "2:\t%b\n4:\t%q\n8:\t%o\n16:\t%x\n16_c:\t%X\n16_p:\t%p\n32:\t%f\n64:\t%i\n\n", 0
+	db "2:\t%b\n4:\t%q\n8:\t%o\n16:\t%x\n16_c:\t%h\n16_p:\t%p\n32:\t%f\n64:\t%i\n\n", 0
 
 section .text
 _unitest_bin:
@@ -183,7 +188,7 @@ _unitest_bin:
 	printf format_bin
 
 	mov rax, 27
-	printf format_bin1, rax, rax, rax, rax, rax, rax, rax
+	;printf format_bin1, rax, rax, rax, rax, rax, rax, rax
 
 	mov rax, -1d
 	printf format_bin2, rax, rax, rax, rax, rax, rax, rax, rax, rax

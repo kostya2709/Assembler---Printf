@@ -65,17 +65,6 @@ section .text
     pop rax
 %endmacro
 
-%macro jecall 2-4
-    cmp byte [rsi], %1
-    jne %%_next
-    %if %0 > 2
-        mov r14, %3
-        mov r15, %4
-    %endif
-    call %2
-    jmp _format_endian
-    %%_next:
-%endmacro
 
 %macro puts 1                           ; A supplementary macros. It prints a string. 
 section .data
@@ -114,6 +103,27 @@ _check_canary:                              ; This function checks whether the b
 .end:    
     pop rax
 ret
+
+%macro jecall 2-4
+    cmp byte [rsi], %1
+    jne %%_next
+    %if %0 > 2
+        mov r14, %3
+        mov r15, %4
+    %endif
+    call %2
+    jmp _format_endian
+    %%_next:
+%endmacro
+
+%macro jmpcall 1-3
+    %if %0 > 1
+        mov r14, %2
+        mov r15, %3
+    %endif
+    call %1
+    jmp _format_endian
+%endmacro
 
 ;╔═══════════════════════════════════_PRINTF════════════════════════════════════════════╗
 ;║                                                                                      ║
@@ -188,7 +198,7 @@ _printf:
 
 .next_form:                        		; Let's check, whether the symbol is slash.
     cmp al, 5ch                    		; Comparison
-    jne    .Printf_Sym              	; If not, just print the symbol at last.
+    jne .Printf_Sym              	; If not, just print the symbol at last.
     call _found_slash            		; If yes, let's call the function and handle the slash.
     jmp .Printf_Cycle            		; Having done everything necessary, let's return to the main cycle.
     
@@ -209,7 +219,7 @@ ret
 
 _write_result:
 
-    PUSHALL                           ; Push all necessary registers.
+    PUSHALL                             ; Push all necessary registers.
     mov rax, printf_buffer          	; RAX = the start of the buffer
     sub rdi, rax                    	; RDI = current position where to write to.
 
@@ -221,7 +231,7 @@ _write_result:
 
     call _check_canary
 
-    POPALL                           ; Pop all necessary registers.
+    POPALL                              ; Pop all necessary registers.
     mov rdi, printf_buffer              ; Return rdi to the start.
     xor rdx, rdx                        ; Drop the printf_buffer counter.
 ret
@@ -249,28 +259,105 @@ ret
 ;╚══════════════════════════════════════════════════════════════════════════════════════╝
 _found_format:
     
-    inc rsi                         	; So, '%' was found. Let's check what is next.
+    inc rsi  
+    xor rbx, rbx                       	; So, '%' was found. Let's check what is next.
+    mov bl, byte [rsi]
 
-    jecall 'c', _Printf_Char			; Function for a char is called.
-    jecall 's', _Printf_String			; Function for a string is called.
-    jecall '%', _Printf_Percent			; Function for a percent is called.
+;    jecall 'c', _Printf_Char			; Function for a char is called.
+;    jecall 's', _Printf_String			; Function for a string is called.
+;    jecall '%', _Printf_Percent			; Function for a percent is called.
     
 										; In the next lines: first argument - r14, the second one - r15
-    jecall 'd', _Printf_Digit, 0, 0 	; Function for a 32-bits signed digit is called.
-    jecall 'u', _Printf_Digit, 0, 1		; Function for a 32-bits unsigned digit is called.
-    jecall 'l', _Printf_Digit, 1, 0		; Function for a 64-bits signed digit is called.
-    jecall 'v', _Printf_Digit, 1, 1		; Function for a 64-bits unsigned digit is called.
+;    jecall 'd', _Printf_Digit, 0, 0 	; Function for a 32-bits signed digit is called.
+;    jecall 'u', _Printf_Digit, 0, 1		; Function for a 32-bits unsigned digit is called.
+;    jecall 'l', _Printf_Digit, 1, 0		; Function for a 64-bits signed digit is called.
+;    jecall 'v', _Printf_Digit, 1, 1		; Function for a 64-bits unsigned digit is called.
     
 										; In the next lines numbers are inverted in a particular
 										; system based on degree of 2.
-    jecall 'b', _Printf_Hex, 0, 1		; Function for a binary format (2 ^ 1) is called.
-    jecall 'q', _Printf_Hex, 0, 2		; Function for a quaternary format (2 ^ 2) is called.
-    jecall 'o', _Printf_Hex, 0, 3		; Function for an octal format (2 ^ 3) is called.
-    jecall 'x', _Printf_Hex, 0, 4       ; Function for a hex format (2 ^ 4) is called.
-    jecall 'X', _Printf_Hex, 26d, 4     ; Function for a hex format (2 ^ 4) with capital letters is called.
-    jecall 'p', _Printf_Hex, 1, 4       ; Function for a pointer format (2 ^ 4) is called.
-    jecall 'f', _Printf_Hex, 0, 5       ; Function for a 32-nd format (2 ^ 5) is called.
-    jecall 'i', _Printf_Hex, 0, 6       ; Function for a 64-th format (2 ^ 6) is called.
+;    jecall 'b', _Printf_Hex, 0, 1		; Function for a binary format (2 ^ 1) is called.
+;    jecall 'q', _Printf_Hex, 0, 2		; Function for a quaternary format (2 ^ 2) is called.
+;    jecall 'o', _Printf_Hex, 0, 3		; Function for an octal format (2 ^ 3) is called.
+;    jecall 'h', _Printf_Hex, 0, 4       ; Function for a hex format (2 ^ 4) is called.
+;    jecall 'x', _Printf_Hex, 26d, 4     ; Function for a hex format (2 ^ 4) with capital letters is called.
+;    jecall 'p', _Printf_Hex, 1, 4       ; Function for a pointer format (2 ^ 4) is called.
+;    jecall 'f', _Printf_Hex, 0, 5       ; Function for a 32-nd format (2 ^ 5) is called.
+;    jecall 'i', _Printf_Hex, 0, 6       ; Function for a 64-th format (2 ^ 6) is called.
+
+
+    jecall '%', _Printf_Percent		    ; Function for a percent is called.
+
+    sub bl, 'a'                         ; Get value in range [0, 26]
+    jmp [.Jump_Table + rbx * 8]         ; Jump to the adress in Jump_Table
+
+.Jump_Table:
+
+    dq _format_endian                   ; a - letter        || empty
+    dq .handle_b                        ; b - letter        || is used
+    dq .handle_c                        ; c - letter        || is used
+    dq .handle_d                        ; d - letter        || is used
+    dq _format_endian                   ; e - letter        || empty
+    dq .handle_f                        ; f - letter        || is used
+    dq _format_endian                   ; g - letter        || empty
+    dq .handle_h                        ; h - letter        || is used
+    dq .handle_i                        ; i - letter        || is used
+    times 2 dq _format_endian           ; [j, k] - letters  || empty
+    dq .handle_l                        ; l - letter        || is used
+    times 2 dq _format_endian           ; [m, n] - letter   || empty
+    dq .handle_o                        ; o - letter        || is used               
+    dq .handle_p                        ; p - letter        || is used
+    dq .handle_q                        ; q - letter        || is used
+    dq _format_endian                   ; r - letter        || empty
+    dq .handle_s                        ; s - letter        || is used
+    dq _format_endian                   ; t - letter        || empty
+    dq .handle_u                        ; u - letter        || is used
+    dq .handle_v                        ; v - letter        || is used
+    dq _format_endian                   ; w - letter        || empty
+    dq .handle_x                        ; x - letter        || is used
+
+
+.handle_b:
+    jmpcall _Printf_Hex, 0, 1		    ; Function for a binary format (2 ^ 1) is called.
+
+.handle_c:
+    jmpcall _Printf_Char			    ; Function for a char is called.
+
+.handle_d:
+    jmpcall _Printf_Digit, 0, 0 	    ; Function for a 32-bits signed digit is called.
+
+.handle_f:
+    jmpcall _Printf_Hex, 0, 5           ; Function for a 32-nd format (2 ^ 5) is called.
+
+.handle_i:
+    jmpcall _Printf_Hex, 0, 6           ; Function for a 64-th format (2 ^ 6) is called.
+
+.handle_h:
+    jmpcall _Printf_Hex, 26d, 4         ; Function for a hex format (2 ^ 4) with capital letters is called.
+
+.handle_l:
+    jmpcall _Printf_Digit, 1, 0		    ; Function for a 64-bits signed digit is called.
+
+.handle_o:
+    jmpcall _Printf_Hex, 0, 3		    ; Function for an octal format (2 ^ 3) is called.
+
+.handle_p:
+    jmpcall _Printf_Hex, 1, 4           ; Function for a pointer format (2 ^ 4) is called.
+
+.handle_q:
+    jmpcall _Printf_Hex, 0, 2		    ; Function for a quaternary format (2 ^ 2) is called.
+
+.handle_s:
+    jmpcall _Printf_String			    ; Function for a string is called.
+
+.handle_u:
+    jmpcall _Printf_Digit, 0, 1		    ; Function for a 32-bits unsigned digit is called.
+
+.handle_v:
+    jmpcall _Printf_Digit, 1, 1		    ; Function for a 64-bits unsigned digit is called.
+
+.handle_x:
+    jmpcall _Printf_Hex, 0, 4           ; Function for a hex format (2 ^ 4) is called.
+
 _format_endian:							; Label of end of the format switch.
 .End:
     inc rsi                            	; Let's skip the symbol after '%'.
@@ -370,13 +457,14 @@ _Printf_String:
     mov rbx, [cur_arg]
 
 
-    .Cycle:
-    mov al, [rbx]
+
+.loop:
+   mov al, [rbx]
     cmp al, 0
-    je .End
+je .End
     write_buf al
     inc rbx
-    jmp .Cycle
+    jmp .loop
 
 .End:
 ret
@@ -457,7 +545,7 @@ _found_slash:
     jmp .found_zero                     ; detected on the next iteration of the main _printf cycle.
 
 .not_zero:
-    jescape '0', 0                      ; NULL
+
     jescape 'a', 07h                    ; BELL - Speaker
     jescape 'b', 08h                    ; BACKSPACE
     jescape 't', 09h                    ; CHARACTER TABULATION - Horizontal tabulaton
